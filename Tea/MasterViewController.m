@@ -9,9 +9,18 @@
 #import "MasterViewController.h"
 #import "DetailViewController.h"
 
+#import "Tea.h"
+
 @interface MasterViewController ()
 
 @property NSMutableArray *objects;
+
+/**
+ *  A progress bar.
+ */
+
+@property (weak, nonatomic) IBOutlet UIProgressView *progressView;
+
 @end
 
 @implementation MasterViewController
@@ -23,24 +32,13 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
-    self.navigationItem.leftBarButtonItem = self.editButtonItem;
-
-    UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(insertNewObject:)];
-    self.navigationItem.rightBarButtonItem = addButton;
+    
+    self.objects = [[NSMutableArray alloc] init];
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
-}
-
-- (void)insertNewObject:(id)sender {
-    if (!self.objects) {
-        self.objects = [[NSMutableArray alloc] init];
-    }
-    [self.objects insertObject:[NSDate date] atIndex:0];
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
-    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
 }
 
 #pragma mark - Segues
@@ -65,15 +63,18 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell" forIndexPath:indexPath];
-
-    NSDate *object = self.objects[indexPath.row];
-    cell.textLabel.text = [object description];
+    
+    NSDictionary *object = self.objects[indexPath.row];
+    
+    NSString *name = object[@"name"];
+    
+    cell.textLabel.text = name;
     return cell;
 }
 
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
     // Return NO if you do not want the specified item to be editable.
-    return YES;
+    return NO;
 }
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -83,6 +84,65 @@
     } else if (editingStyle == UITableViewCellEditingStyleInsert) {
         // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
     }
+}
+
+#pragma mark - Data Load
+
+- (IBAction)loadWithTea:(id)sender
+{
+    
+    
+    [[Tea tea] loadURL:self.urlToTest
+   withProgressHandler:^(double progress) {
+       
+       dispatch_async(dispatch_get_main_queue(), ^{
+           [UIView animateWithDuration:0.3 animations:^{
+               self.progressView.alpha = 1.0;
+               self.progressView.progress = progress;
+           }];
+       });
+       
+   }
+     
+    completionHandler:^(BOOL success, NSData *data) {
+        
+        NSMutableArray *results = nil;
+        
+        if (data) {
+            results = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+            self.objects = results;
+        }
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadData];
+            [UIView animateWithDuration:0.3 animations:^{
+                self.progressView.progress = 1.0;
+                self.progressView.alpha = 0.0;
+            }];
+        });
+    } andOperationIdentifier:@"com.mosheberman.tea-request-1"];
+}
+
+- (IBAction)loadWithNSURLRequest:(id)sender {
+    
+    
+    NSURLRequest *request = [[NSURLRequest alloc] initWithURL:self.urlToTest];
+    [NSURLConnection sendAsynchronousRequest:request queue:[NSOperationQueue mainQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
+        NSMutableArray *results = nil;
+        
+        if (data) {
+            results = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
+            self.objects = results;
+        }
+        [self.tableView reloadData];
+    }];
+}
+
+#pragma mark - URL 
+     
+- (NSURL*)urlToTest {
+    NSString *address = @"http://jsonplaceholder.typicode.com/comments";
+    return [NSURL URLWithString:address];
 }
 
 @end
