@@ -44,7 +44,14 @@
  *
  */
 
+@property (nonatomic, strong) TeaCompletionBlock completionHandler;
+
+/**
+ *
+ */
+
 @property (nonatomic, strong) TeaProgressBlock progressHandler;
+
 
 @end
 
@@ -64,9 +71,7 @@
         _connection = [[NSURLConnection alloc] initWithRequest:[NSURLRequest requestWithURL:url] delegate:self];
         
         _progressHandler = progress;
-        
-        __weak NSData* data = _data;
-        self.completionBlock = ^{ if(completion)completion(data != nil, data);};
+        _completionHandler = completion;
         
         _finishedDownloading = NO;
         _downloading = NO;
@@ -76,7 +81,19 @@
 
 - (void)start
 {
+    //  Prep the completion block
+    __weak TeaOperation *weakSelf = self;
+    self.completionBlock = ^{
+        if (weakSelf.completionHandler)
+        {
+            weakSelf.completionHandler(weakSelf.data != nil, weakSelf.data);
+        }
+    };
+    
     [self.connection start];
+    
+    //  KVO compliance
+    
     [self willChangeValueForKey:@"isExecuting"];
     self.downloading = YES;
     [self didChangeValueForKey:@"isExecuting"];
