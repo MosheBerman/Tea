@@ -7,7 +7,6 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "TeaOperation.h"
 
 /**
  *  A tea completion block for network requests.
