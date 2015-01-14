@@ -92,20 +92,8 @@
 {
     
     
-    [[Tea tea] loadURL:self.urlToTest
-   withProgressHandler:^(double progress) {
-       
-       dispatch_async(dispatch_get_main_queue(), ^{
-           [UIView animateWithDuration:0.3 animations:^{
-               self.progressView.alpha = 1.0;
-               self.progressView.progress = progress;
-           }];
-       });
-       
-   }
-     
-    completionHandler:^(BOOL success, NSData *data) {
-        
+    [[Tea tea] loadURL:self.urlToTest withCompletionHandler:^(BOOL success, NSData *data) {
+    
         NSMutableArray *results = nil;
         
         if (data) {
@@ -120,7 +108,7 @@
                 self.progressView.alpha = 0.0;
             }];
         });
-    } andOperationIdentifier:@"com.mosheberman.tea-request-1"];
+    }];
 }
 
 - (IBAction)loadWithNSURLRequest:(id)sender {

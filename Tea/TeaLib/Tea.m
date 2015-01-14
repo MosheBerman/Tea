@@ -8,6 +8,7 @@
 
 #import "Tea.h"
 #import "TeaOperation.h"
+#import <UIKit/UIKit.h>
 
 /**
  *
@@ -42,6 +43,7 @@
     if (self) {
         _queue = [[NSOperationQueue alloc] init];
         _queue.name = @"com.mosheberman.queue.Tea";
+        _queue.underlyingQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     }
     return self;
 }
@@ -69,10 +71,10 @@
     return manager;
 }
 
-#pragma mark - URL Loading
+#pragma mark - Network Operations
 
 /** ---
- *  @name URL Loading
+ *  @name Network Operations
  *  ---
  */
 
@@ -80,20 +82,130 @@
  *  Kicks off a url load operation on the tea's internal concurrent queue.
  *
  *  @param url The URL to load.
- *  @param progress The progress handler.
  *  @param completion The completion handler.
- *  @param operationIdentifier Used to cancel the operation later.
  *
  */
 
-- (void)loadURL:(NSURL *)url withProgressHandler:(TeaProgressBlock)progress completionHandler:(TeaCompletionBlock)completion andOperationIdentifier:(NSString *)operationIdentifier
+- (void)loadURL:(NSURL *)url withCompletionHandler:(TeaCompletionBlock)completion
 {
-    TeaOperation *t = [[TeaOperation alloc] initWithURL:url progressHandler:progress andCompletion:completion];
-    t.identifier = operationIdentifier;
-    
-    [self.queue addOperation:t];
-    [t start];
+    [self sendRequestOfType:@"GET" withHTTPBody:nil toURL:url withProgressHandler:nil andCompletionHandler:completion];
 }
 
+/**
+ *  Posts data to a URL using a given dictionary.
+ *
+ *  @param body The HTTP body to post.
+ *  @param url The URL to post to.
+ *  @param completion The completion handler to run when the operation is completed.
+ */
+
+- (void)sendHTTPBody:(NSDictionary *)body toURL:(NSURL *)url withCompletionHandler:(TeaCompletionBlock)completion
+{
+    [self sendRequestOfType:@"POST" withHTTPBody:body toURL:url withProgressHandler:nil andCompletionHandler:completion];
+}
+
+/**
+ *  Sends a request of the specified type (GET | POST | DELETE | UPDATE) to the specified url.
+ *
+ *  @param methodType The type of data to send.
+ *  @param body The HTTP body to post.
+ *  @param url The URL to post to.
+ *  @param progress The progress handler to call when the underlying NSURLConnection has some progress to report.
+ *  @param completion The completion handler to run when the operation is completed.
+ */
+
+- (void)sendRequestOfType:(NSString *)methodType withHTTPBody:(NSDictionary *)body toURL:(NSURL *)url withProgressHandler:(TeaProgressBlock)progress andCompletionHandler:(TeaCompletionBlock)completion
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        TeaOperation *t = [[TeaOperation alloc] initWithURL:url andType:methodType andData:body withProgressHandler:progress andCompletion:completion];
+        [t addObserver:self forKeyPath:NSStringFromSelector(@selector(isExecuting)) options:NSKeyValueObservingOptionNew context:nil];
+        [self.queue addOperation:t];
+        [t start];
+    });
+}
+
+#pragma mark - Network Activity Indicator
+
+/** ---
+ *  @name Network Activity Indicator
+ *  ---
+ */
+
+/**
+ *  Update the activity indicator.
+ */
+
+- (void)updateNetworkActivityIndicator
+{
+    BOOL enabled = NO;
+    if (self.queue.operationCount == 0)
+    {
+        enabled = NO;
+    }
+    else
+    {
+        for (TeaOperation *operation in self.queue.operations)
+        {
+            if (operation.isExecuting) {
+                enabled = YES;
+                break;
+            }
+        }
+    }
+    [self setNetworkActivityIndicatorEnabled:enabled];
+}
+
+- (void)setNetworkActivityIndicatorEnabled:(BOOL)enabled
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:enabled];
+    });
+}
+
+#pragma mark - Inspecting the Queue
+
+/** ---
+ *  @name Inspecting the Queue
+ * 
+ * ----
+ */
+
+/**
+ *  @return The operations in the queue.
+ */
+
+- (NSArray *)operations
+{
+    return self.queue.operations;
+}
+
+/**
+ *  The number of operations in the queue.
+ */
+
+- (NSInteger)operationCount
+{
+    return self.queue.operationCount;
+}
+
+#pragma mark - KVO
+
+/** ---
+ *  @name KVO
+ * ---
+ */
+
+/**
+ *
+ *
+ */
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    if([keyPath isEqual:NSStringFromSelector(@selector(isExecuting))])
+    {
+        [self updateNetworkActivityIndicator];
+    }
+}
 
 @end

@@ -41,10 +41,10 @@ typedef void(^TeaProgressBlock)(double progress);
 
 + (instancetype)tea;
 
-#pragma mark - URL Loading
+#pragma mark - Network Operations
 
 /** ---
- *  @name URL Loading
+ *  @name Network Operations
  *  ---
  */
 
@@ -52,12 +52,33 @@ typedef void(^TeaProgressBlock)(double progress);
  *  Kicks off a url load operation on the tea's internal concurrent queue.
  *
  *  @param url The URL to load.
- *  @param progress The progress handler.
  *  @param completion The completion handler.
- *  @param operationIdentifier Used to cancel the operation later.
  *
  */
 
-- (void)loadURL:(NSURL *)url  withProgressHandler:(TeaProgressBlock)progress completionHandler:(TeaCompletionBlock)completion andOperationIdentifier:(NSString *)operationIdentifier;
+- (void)loadURL:(NSURL *)url withCompletionHandler:(TeaCompletionBlock)completion;
+
+/**
+ *  Posts data to a URL using a given dictionary.
+ *
+ *  @param body The HTTP body to post.
+ *  @param url The URL to post to.
+ *  @param completion The completion handler to run when the operation is completed.
+ */
+
+- (void)sendHTTPBody:(NSDictionary *)body toURL:(NSURL *)url withCompletionHandler:(TeaCompletionBlock)completion;
+
+/**
+ *  Sends a request of the specified type (GET | POST | DELETE | UPDATE) to the specified url.
+ *
+ *  @param methodType The type of data to send.
+ *  @param body The HTTP body to post.
+ *  @param url The URL to post to.
+ *  @param progress The progress handler to call when the underlying NSURLConnection has some progress to report.
+ *  @param completion The completion handler to run when the operation is completed.
+ */
+
+- (void)sendRequestOfType:(NSString *)methodType withHTTPBody:(NSDictionary *)body toURL:(NSURL *)url withProgressHandler:(TeaProgressBlock)progress andCompletionHandler:(TeaCompletionBlock)completion;
+
 
 @end
